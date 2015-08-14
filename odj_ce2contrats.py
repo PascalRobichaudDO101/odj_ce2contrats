@@ -1,5 +1,5 @@
 """Extraire les contrats de l'ordre du jour du Comité exécutif
-Version 2.0, 2015-08-13
+Version 2.1, 2015-08-14
 Développé en Python 3.4
 Licence CC-BY-NC 4.0 Pascal Robichaud, pascal.robichaud.do101@gmail.com
 
@@ -18,7 +18,7 @@ Voir à détecter s'il s'agit d'un ordre du jour du Conseil municipal, Comité e
 Par exemple, via le nom du fichier: CE_ODJ_LP_ORDI_2015-08-12_08h30_FR.pdf
 """
 
-__version__ = "$2.0$"                                   #Veuillez m'indioquez si c'est la bonne façon de faire ;-)
+__version__ = "$2.1$"                                   #Veuillez m'indioquez si c'est la bonne façon de faire ;-)
 # $Source$
 
 import datetime
@@ -129,17 +129,7 @@ def getNo_appel_offres(texte):
 def getNbr_soumissions(texte):
 
     nbr_soumissions = ""
-    
-    # if len(texte) > 0:
-        # if texte.find("offres public ") != -1:
-            # debut_no_appel_offre = texte.find("offres public ") + 13
-            # debut_nbr_soumission = texte.find(" (", debut_no_appel_offre)
-            # if debut_nbr_soumission > -1:
-                # fin_nbr_soumission = texte.find(" soum", debut_nbr_soumission)
-            
-            # nbr_soumissions = mid(texte, debut_nbr_soumission + 2, fin_nbr_soumission - debut_nbr_soumission - 2)
-            # nbr_soumissions = nbr_soumissions.strip()
- 
+
     if texte:
 
         if texte.find(" soumissionnaires)") > -1:
@@ -268,9 +258,7 @@ def main():
                             fcontrats_traites.writerow([INSTANCE, DATE_RENCONTRE, no_decision, no_dossier, instance_reference, no_appel_offre, nbr_soumissions, pour, texte_contrat, source, DATE_TRAITEMENT])
                             
 
-                        #no_decision = ligne2                               #Nouveau numéro de décision
                         no_decision = left(ligne2, 6)                       #Nouveau numéro de décision
-                        test_Debug("2.1")
                         pour = ""                                           #Initaliser le pour
                         no_dossier = ""                                     #Initaliser le numéro de dossier
                         instance_reference = ""                             #Initialiser l'instance référente du contrat
