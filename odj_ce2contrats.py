@@ -1,4 +1,4 @@
-"""Extraire les contrats de l'ordre du jour du Comité exécutif
+""" test Extraire les contrats de l'ordre du jour du Comité exécutif
 Version 2.0, 2015-08-13
 Développé en Python 3.4
 Licence CC-BY-NC 4.0 Pascal Robichaud, pascal.robichaud.do101@gmail.com
