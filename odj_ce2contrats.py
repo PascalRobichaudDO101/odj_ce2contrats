@@ -23,7 +23,6 @@ __version__ = "$2.0$"                                   #Veuillez m'indioquez si
 
 import datetime
 import csv                                              #Pour sauvegarder les résultats dans le fichier verification.csv
-import re
 
 INSTANCE = "Comité exécutif"
 #INSTANCE = "Conseil municipal"
