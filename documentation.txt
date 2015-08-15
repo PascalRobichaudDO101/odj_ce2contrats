@@ -4,8 +4,11 @@ Variables
 ---------
 
 no_decision             Numéro de la décision dans le procès-verbal
+                        Forme: 20.001 pour le Comité exécutif
+                               20.01 pour le Conseil municipal
 pour                    L'entité pour qui le contrat est voté
 no_dossier              Numéro de dossier en lien avec le contrat
+                        Forme:
 instance_reference      L'instance de qui vient la demande du contrat 
 no_appel_offre          Numéro de l'appel d'offres, si applicable 
 debut_no_appel_offre    Position du début du numéro de l'appel d'offres
