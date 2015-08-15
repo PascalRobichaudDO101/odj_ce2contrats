@@ -1,5 +1,5 @@
 """Extraire les contrats de l'ordre du jour du Comité exécutif
-Version 2.1, 2015-08-14
+Version 2.2, 2015-08-15
 Développé en Python 3.4
 Licence CC-BY-NC 4.0 Pascal Robichaud, pascal.robichaud.do101@gmail.com
 
@@ -18,11 +18,12 @@ Voir à détecter s'il s'agit d'un ordre du jour du Conseil municipal, Comité e
 Par exemple, via le nom du fichier: CE_ODJ_LP_ORDI_2015-08-12_08h30_FR.pdf
 """
 
-__version__ = "$2.1$"                                   #Veuillez m'indioquez si c'est la bonne façon de faire ;-)
+__version__ = "$2.2$"                                   #Veuillez m'indioquez si c'est la bonne façon de faire ;-)
 # $Source$
 
 import datetime
 import csv                                              #Pour sauvegarder les résultats dans le fichier verification.csv
+import re
 
 INSTANCE = "Comité exécutif"
 #INSTANCE = "Conseil municipal"
@@ -31,7 +32,6 @@ DATE_RENCONTRE = "2015-08-12"                           #À changer
 PREFIXE_DECISION = "20."                                #À changer au besoin
 DATE_TRAITEMENT = datetime.datetime.today()             #Date à laquelle l'extraction des contrats a été faite
                                                         #Arranger le format AAAA-MM-JJ
-
 
 #Fonction strip_bom
 #Pour enlever \ufeff
@@ -68,6 +68,20 @@ def est_numero_de_page(texte):
      
     return reponse
 
+
+#Fonction est_huis_clos
+#Vérifie si la décision est à huis clos, 
+#en tel cas, il n'y a pas de contrat dans l'ordre du jour
+def est_huis_clos(texte):
+    
+    reponse = False
+    
+    if texte.find("huis clos") > -1:
+        reponse = True
+
+    return reponse
+    
+    
 #Fonction est_instance_reference
 #Vérifie si la ligne indique l'instance qui a référé le contrat
 def est_instance_reference(texte):
@@ -124,26 +138,32 @@ def getNo_appel_offres(texte):
         
 
 #Fonction getNbr_soumissions
-#Le nombre de soumissions se trouve toujours après "offres public ", entre parenthèses
-#texte: correspondant au texte complet de la décision
+#Retourne le nombre de soumissionnaires pour l'appel d'offres effectué (si applicable)
 def getNbr_soumissions(texte):
-
-    nbr_soumissions = ""
-
+    
+    position = -1                                                           #Variable utilisée pour retoruver le nombre de soumissionnaires
+    temp = ""                                                               #Variable temporaire pour garder le caractère vérifié
+    nbr_soumissions = ""                                                    #Nombre de soumissions
+ 
     if texte:
 
         if texte.find(" soumissionnaires)") > -1:
 
-            debut_soumissionaires = texte.find(" soumissionnaires)")
+            position = texte.find(" soumissionnaire") - 1                   #Le mot soumissionaire est au singulier 
+                                                                            #pour les cas où il n'y en a qu'un seul
+            temp = mid(texte, position, 1)
             
-            nbr_soumissions = mid(texte, debut_soumissionaires - 1,  1)
-            
-            nbr_soumissions = nbr_soumissions.strip()
-            print(nbr_soumissions)
+            while (mid(texte, position, 1).isnumeric() and position >= 0):  #Même si la probabilité que position 
+                                                                            #devienne plus petit que 0 est presque inexistante,
+                nbr_soumissions = temp + nbr_soumissions                    #on fait une vérification à cet effet quand même.
+                                                                            
+                position = position - 1
+                temp = mid(texte, position, 1)
 
-            if not nbr_soumissions.isnumeric():         #Si le résultat n'est pas un nombre, on vide nbr_soumissions
-               nbr_soumissions = ""
-         
+            if not nbr_soumissions.isnumeric():                             #On fait une double vérification afin de s'assurer 
+                nbr_soumissions = ""                                        #que le résultat est bien un nombre. 
+                                                                            #On réinitialiuse nbr_soumissions si ce n'est pas un nombre.
+               
     return nbr_soumissions
    
         
@@ -170,7 +190,20 @@ def getDepense_totale(texte):
        
     return depense_total
 
-        
+#Fonction afficher_traitement_termine
+#Indiquer que le traitement est terminé
+def afficher_statut_traitement(statut):
+
+    date_heure = datetime.datetime.now()
+    statut = statut.strip()
+    
+    print()
+    print('-'*60)
+    print(statut + ": " + date_heure.strftime('%Y-%m-%d %H:%M:%S') )
+    print('-'*60)
+    
+    return None
+    
 #Fonction left
 def left(s, amount = 1, substring = ""):
 
@@ -208,8 +241,11 @@ def test_Debug(texte):
          
 
 #Début du traitement 
-
 def main():
+
+    #Indiquer le début du traitement
+    afficher_statut_traitement("Début du traitemenT")
+    
     #Initialisation des variables
     no_decision = ""
     pour = ""
@@ -226,7 +262,7 @@ def main():
     strip_bom(FICHIER_ORDRE_DU_JOUR)
 
     #Ouverture du fichier pour les résultats
-    contrats_traites = open('contrats_traites.csv', "w", encoding="utf-8")      
+    contrats_traites = open("contrats_traites.csv", "w", encoding="utf-8")      
     fcontrats_traites = csv.writer(contrats_traites, delimiter = ';') 
     fcontrats_traites.writerow(["instance", "date_rencontre", "no_decision", "no_dossier", "instance_reference", "no_appel_offres", "nbr_soumissions", "pour", "texte_contrat", "source", "date_traitement"])
 
@@ -250,14 +286,14 @@ def main():
                         #Écrire le dernier contrat dans le fichier contrats_traites.txt
                         if no_decision:                                     #Dans le traitement, sur la première décision, il n'y a encore rien à écrire
 
-                            no_appel_offre = getNo_appel_offres(texte_contrat)
-                            nbr_soumissions = getNbr_soumissions(texte_contrat)
-                            depense_totale = getDepense_totale(texte_contrat)
+                            if not est_huis_clos(pour):
+                                no_appel_offre = getNo_appel_offres(texte_contrat)
+                                nbr_soumissions = getNbr_soumissions(texte_contrat)
+                                depense_totale = getDepense_totale(texte_contrat)
+                                
+                                #Écrire le nom des chgamps dans le fichier contrats_traites.csv
+                                fcontrats_traites.writerow([INSTANCE, DATE_RENCONTRE, no_decision, no_dossier, instance_reference, no_appel_offre, nbr_soumissions, pour, texte_contrat, source, DATE_TRAITEMENT])
                             
-                            #Écrire le nom des chgamps dans le fichier contrats_traites.csv
-                            fcontrats_traites.writerow([INSTANCE, DATE_RENCONTRE, no_decision, no_dossier, instance_reference, no_appel_offre, nbr_soumissions, pour, texte_contrat, source, DATE_TRAITEMENT])
-                            
-
                         no_decision = left(ligne2, 6)                       #Nouveau numéro de décision
                         pour = ""                                           #Initaliser le pour
                         no_dossier = ""                                     #Initaliser le numéro de dossier
@@ -296,19 +332,17 @@ def main():
                                     pour = left(pour,len(pour)-12).strip()          #Enlever le numéro de dossier qui se trouvait à la fin de la variable pour
                                     
     #Écrire le dernier contrat
-    no_appel_offre = getNo_appel_offres(texte_contrat)
-    nbr_soumissions = getNbr_soumissions(texte_contrat)
-    depense_totale = getDepense_totale(texte_contrat)
-    fcontrats_traites.writerow([INSTANCE, DATE_RENCONTRE, no_decision, no_dossier, instance_reference, no_appel_offre, nbr_soumissions, pour, texte_contrat, source, DATE_TRAITEMENT])     
+    if not est_huis_clos(pour):
+        no_appel_offre = getNo_appel_offres(texte_contrat)
+        nbr_soumissions = getNbr_soumissions(texte_contrat)
+        depense_totale = getDepense_totale(texte_contrat)
+        fcontrats_traites.writerow([INSTANCE, DATE_RENCONTRE, no_decision, no_dossier, instance_reference, no_appel_offre, nbr_soumissions, pour, texte_contrat, source, DATE_TRAITEMENT])     
 
     #Fermer les fichiers            
     contrats_traites.close()
 
     #Indiquer que le traitement est terminé
-    print()
-    print('-'*60)
-    print("Traitement terminé.")
-    print('-'*60)
+    afficher_statut_traitement("Traitement termimé")
 
 if __name__ == '__main__':
     main()
