@@ -8,8 +8,11 @@ no_decision             Numéro de la décision dans le procès-verbal
                                20.01 pour le Conseil municipal
 pour                    L'entité pour qui le contrat est voté
 no_dossier              Numéro de dossier en lien avec le contrat
-                        Forme:
+                        Forme: numéro à 10 chiffres: 1234567890
 instance_reference      L'instance de qui vient la demande du contrat 
+                        Forme: CE = Comité exécutif
+                               CG = Conseil d'agglomération
+                               CM = Conseil municipal
 no_appel_offre          Numéro de l'appel d'offres, si applicable 
 debut_no_appel_offre    Position du début du numéro de l'appel d'offres
 fin_no_appel_offre      Position de la fin du numéro de l'appel d'offres
