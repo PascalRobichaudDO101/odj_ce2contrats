@@ -1,5 +1,5 @@
 """Extraire les contrats de l'ordre du jour du Comité exécutif
-Version 2.2, 2015-08-15
+Version 2.3, 2015-08-15
 Développé en Python 3.4
 Licence CC-BY-NC 4.0 Pascal Robichaud, pascal.robichaud.do101@gmail.com
 
@@ -16,9 +16,14 @@ dans un sous-répertoire et fasse le traitement automatiquement.
 
 Voir à détecter s'il s'agit d'un ordre du jour du Conseil municipal, Comité exécutif, etc.
 Par exemple, via le nom du fichier: CE_ODJ_LP_ORDI_2015-08-12_08h30_FR.pdf
+
+Version 2.3, 2015-08-15
+* Bonification de la fonction get_fournisseur
+* Ajout de la fonction set_nombre_fournisseurs
+
 """
 
-__version__ = "$2.2$"                                   #Veuillez m'indioquez si c'est la bonne façon de faire ;-)
+__version__ = "$2.3$"                                   #Veuillez m'indioquez si c'est la bonne façon de faire ;-)
 # $Source$
 
 import datetime
@@ -28,11 +33,12 @@ import re
 INSTANCE = "Comité exécutif"
 #INSTANCE = "Conseil municipal"
 FICHIER_ORDRE_DU_JOUR = "C:\\contrats\\odj.txt"         #Emplacement du fichier du l'ordre du jour
+FICHIER_FOURNISSEUR = "C:\\contrats\\fournisseurs.csv"  #Emplacement du fichier de la liste des founisseurs
 DATE_RENCONTRE = "2015-08-12"                           #À changer
 PREFIXE_DECISION = "20."                                #À changer au besoin
 DATE_TRAITEMENT = datetime.datetime.today()             #Date à laquelle l'extraction des contrats a été faite
                                                         #Arranger le format AAAA-MM-JJ
-
+                                                       
 #Fonction strip_bom
 #Pour enlever \ufeff
 def strip_bom(fileName):
@@ -165,8 +171,89 @@ def getNbr_soumissions(texte):
                                                                             #On réinitialiuse nbr_soumissions si ce n'est pas un nombre.
                
     return nbr_soumissions
+
+    
+#Fonction get_fournisseur
+#Retourne le nom du fournisseur dans le texte de la décision du contrat
+def get_fournisseur(texte):
+
+    reponse = ""
+    position_debut_prefixe = -1
+    position_debut_suffixe = -1
+    
+    prefixe_suffixe = [["Accorder un contrat à "," pour le service d'entretien "],
+                       ["Accorder des contrats à ", " pour le service d'entretien "],
+                       ["Accorder un contrat à ", " pour le remplacement "],
+                       ["Accorder un contrat à ", " pour la construction "],
+                       ["Accorder un contrat à ", " pour la fourniture "],
+                       ["Accorder un contrat à ", " pour le projet "],
+                       ["Accorder un contrat à ", " pour la réfection "],
+                       ["Accorder un contrat à ", " pour la reconstruction "],
+                       ["Accorder un contrat à ", " pour la surveillance "],
+                       ["Accorder un contrat à ", " pour l'exécution de travaux "],
+                       ["Accorder un contrat à ", " pour la réalisation de travaux "],
+                       ["Accorder un contrat à l'entreprise ", " pour les travaux de "],
+                       ["Accorder un contrat à la firme ", " pour les travaux "],
+                       ["Accorder un contrat de services professionnels à ", " pour la réalisation "],
+                       ["Accorder à la firme ", " un contrat de "],
+                       ["Conclure avec ", " une entente-cadre "],
+                       ["Conclure avec la firme ", " une entente-cadre "],
+                       ["Conclure 2 ententes-cadres avec "," pour des travaux "],
+                       ["Conclure une entente-cadre de services professionnels avec ", " pour la réalisation "]
+                      ]
+
+    #Rechercher le fournisseuur à partir de la liste de référence              
+    with open(FICHIER_FOURNISSEUR, "r", encoding = "utf-8", ) as f:     
+        reader = csv.reader(f, delimiter = ";")    
+    
+        for ligne in reader:
+            
+            temp_fournisseur = ligne[0]
+            temp_fournisseur = temp_fournisseur.strip()
+            
+            if temp_fournisseur in texte:
+                reponse = temp_fournisseur
    
-        
+    #Le fournisseur n'a pas été trouvé dans la liste de référence
+    #on fait alors une recherche avec les termes clés 
+    #se trouvant avant et après le nom du fournisseur
+    if not reponse:                                                     
+                                                                                
+        for i in prefixe_suffixe:
+
+            position_debut_prefixe = texte.find(i[0])
+            
+            if position_debut_prefixe > -1:
+                
+                position_debut_suffixe = texte.find(i[1], position_debut_prefixe + len(i[0]))
+                
+                if position_debut_suffixe > -1:
+
+                    reponse = mid(texte, position_debut_prefixe + len(i[0]), position_debut_suffixe - position_debut_prefixe - len(i[0]))
+
+                    break
+
+    #Enlever s'il y a une virgule après le nom
+    #On ne fait pas un replace car il peut y avoir des virgules valides dans le nom du fournisseur
+    if reponse:
+        reponse = reponse.strip()       #Le strip() ne semble pas fonctionner
+        if right(reponse, 1) == ",":
+            reponse = left(reponse, len(reponse) - 1)
+        if right(reponse, 2) == ", ":
+            reponse = left(reponse, len(reponse) - 2)  
+
+    return reponse  
+
+#Fonction set_nombre_fournisseurs(texte)
+def set_nombre_fournisseurs(texte, nbr_fournisseurs):
+    
+    reponse = nbr_fournisseurs
+
+    if texte:
+        reponse = nbr_fournisseurs + 1  
+
+    return reponse
+    
 #Fonction getDepense_totale !!!DOIT ETRE RETRAVAILLÉ!!!
 #Si le terme «Dépense total» est présent, extraire le montant.
 #Ceci ne couvre pas tous les cas, mais est une première étape.
@@ -192,7 +279,7 @@ def getDepense_totale(texte):
 
 #Fonction afficher_traitement_termine
 #Indiquer que le traitement est terminé
-def afficher_statut_traitement(statut):
+def afficher_statut_traitement(statut, nbr_fournisseur):
 
     date_heure = datetime.datetime.now()
     statut = statut.strip()
@@ -200,6 +287,11 @@ def afficher_statut_traitement(statut):
     print()
     print('-'*60)
     print(statut + ": " + date_heure.strftime('%Y-%m-%d %H:%M:%S') )
+    
+    
+    if statut == "Traitement termimé":
+        print("Nombre de fournisseurs: ", nbr_fournisseur)
+    
     print('-'*60)
     
     return None
@@ -243,9 +335,7 @@ def test_Debug(texte):
 #Début du traitement 
 def main():
 
-    #Indiquer le début du traitement
-    afficher_statut_traitement("Début du traitemenT")
-    
+   
     #Initialisation des variables
     no_decision = ""
     pour = ""
@@ -254,17 +344,22 @@ def main():
     no_appel_offre = ""
     debut_no_appel_offre = ""
     fin_no_appel_offre = ""
+    fournisseur = ""
+    nbr_fournisseur = 0
     depense_totale = ""
     texte_contrat = ""
     source = "http://ville.montreal.qc.ca/sel/adi-public/afficherpdf/fichier.pdf?typeDoc=odj&doc=7203"
 
+    #Indiquer le début du traitement
+    afficher_statut_traitement("Début du traitement", nbr_fournisseur)
+    
     #Enlever le BOM au début du fichier
     strip_bom(FICHIER_ORDRE_DU_JOUR)
 
     #Ouverture du fichier pour les résultats
     contrats_traites = open("contrats_traites.csv", "w", encoding="utf-8")      
     fcontrats_traites = csv.writer(contrats_traites, delimiter = ';') 
-    fcontrats_traites.writerow(["instance", "date_rencontre", "no_decision", "no_dossier", "instance_reference", "no_appel_offres", "nbr_soumissions", "pour", "texte_contrat", "source", "date_traitement"])
+    fcontrats_traites.writerow(["instance", "date_rencontre", "no_decision", "no_dossier", "instance_reference", "no_appel_offres", "nbr_soumissions", "pour", "texte_contrat", "fournisseur", "source", "date_traitement"])
 
     #Passer au travers de l'ordre du jour
     with open(FICHIER_ORDRE_DU_JOUR, "r", encoding = "utf-8", ) as f:
@@ -286,13 +381,15 @@ def main():
                         #Écrire le dernier contrat dans le fichier contrats_traites.txt
                         if no_decision:                                     #Dans le traitement, sur la première décision, il n'y a encore rien à écrire
 
-                            if not est_huis_clos(pour):
+                            if (not est_huis_clos(pour) or not est_huis_clos(texte_contrat)):
                                 no_appel_offre = getNo_appel_offres(texte_contrat)
                                 nbr_soumissions = getNbr_soumissions(texte_contrat)
+                                fournisseur = get_fournisseur(texte_contrat)
+                                nbr_fournisseur = set_nombre_fournisseurs(fournisseur, nbr_fournisseur)
                                 depense_totale = getDepense_totale(texte_contrat)
                                 
                                 #Écrire le nom des chgamps dans le fichier contrats_traites.csv
-                                fcontrats_traites.writerow([INSTANCE, DATE_RENCONTRE, no_decision, no_dossier, instance_reference, no_appel_offre, nbr_soumissions, pour, texte_contrat, source, DATE_TRAITEMENT])
+                                fcontrats_traites.writerow([INSTANCE, DATE_RENCONTRE, no_decision, no_dossier, instance_reference, no_appel_offre, nbr_soumissions, pour, texte_contrat, fournisseur, source, DATE_TRAITEMENT])
                             
                         no_decision = left(ligne2, 6)                       #Nouveau numéro de décision
                         pour = ""                                           #Initaliser le pour
@@ -301,6 +398,7 @@ def main():
                         no_appel_offre = ""                                 #Initaliser le numéro d'appel d'offre
                         debut_no_appel_offre = ""
                         fin_no_appel_offre = ""
+                        fournisseur = ""
                         depense_totale = ""
                         texte_contrat = ""                                  #Initaliser le texte du contrat
                     
@@ -335,14 +433,15 @@ def main():
     if not est_huis_clos(pour):
         no_appel_offre = getNo_appel_offres(texte_contrat)
         nbr_soumissions = getNbr_soumissions(texte_contrat)
+        fournisseur = get_fournisseur(texte_contrat)
         depense_totale = getDepense_totale(texte_contrat)
-        fcontrats_traites.writerow([INSTANCE, DATE_RENCONTRE, no_decision, no_dossier, instance_reference, no_appel_offre, nbr_soumissions, pour, texte_contrat, source, DATE_TRAITEMENT])     
+        fcontrats_traites.writerow([INSTANCE, DATE_RENCONTRE, no_decision, no_dossier, instance_reference, no_appel_offre, nbr_soumissions, pour, texte_contrat, fournisseur, source, DATE_TRAITEMENT])     
 
     #Fermer les fichiers            
     contrats_traites.close()
 
     #Indiquer que le traitement est terminé
-    afficher_statut_traitement("Traitement termimé")
+    afficher_statut_traitement("Traitement termimé", nbr_fournisseur)
 
 if __name__ == '__main__':
     main()
